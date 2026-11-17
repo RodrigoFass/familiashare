@@ -8,6 +8,10 @@ seguem 0.x.y: **x** sobe em mudanças relevantes, **y** em ajustes e consertos m
 
 ## [Não lançado]
 
+### Alterado
+- O volume que você escolhe para a tela de cada amigo fica salvo e continua igual
+  quando você abre o app de novo.
+
 ## [0.6.1] — 2026-11-16
 
 ### Alterado
