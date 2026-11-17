@@ -994,11 +994,12 @@ function watchAdd(code) {
   if (cam || mine) { s.video.muted = s.muted = true; } // câmera não tem som; a minha tela, sem som para não dar eco
   else {
     const range = tile.querySelector('.vol input');
+    loadVolumes();
     range.value = Math.round((volumes.get(code) ?? 1) * 100);
     s.video.volume = range.value / 100;
     range.oninput = () => {
       const v = range.value / 100;
-      s.video.volume = v; volumes.set(code, v);
+      s.video.volume = v; setVolume(code, v);
       if (v > 0 && s.muted) toggleMute(code); else updateVolIcon(s); // mexer no volume tira o mudo
     };
   }
@@ -1021,13 +1022,21 @@ function watchRemove(code, silent) {
 
 function tileMsg(s, t) { const m = s.tile.querySelector('.msg'); m.textContent = t; m.hidden = !t; }
 
-const volumes = new Map(); // volume escolhido para cada pessoa (vale enquanto o app estiver aberto)
+// volume escolhido para cada pessoa; fica salvo no config.json (goSetVolume)
+let volumes = null;
+function loadVolumes() { if (!volumes) volumes = new Map(Object.entries(S.config.volumes || {}).map(([c, p]) => [c, p / 100])); }
+const volTimers = new Map();
+function setVolume(code, v) {
+  volumes.set(code, v);
+  clearTimeout(volTimers.get(code)); // arrastar o slider não grava a cada passo
+  volTimers.set(code, setTimeout(() => { volTimers.delete(code); goSetVolume(code, Math.round(v * 100)); }, 500));
+}
 
 function toggleMute(code) {
   const s = sessions.get(code); if (!s || s.cam || s.code === S.code) return;
   s.muted = !s.muted; s.video.muted = s.muted;
   if (!s.muted && s.video.volume === 0) { // desmutar com volume zerado: volta para 50%
-    s.video.volume = 0.5; volumes.set(code, 0.5); s.tile.querySelector('.vol input').value = 50;
+    s.video.volume = 0.5; setVolume(code, 0.5); s.tile.querySelector('.vol input').value = 50;
   }
   updateVolIcon(s);
 }

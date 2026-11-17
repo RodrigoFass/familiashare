@@ -15,6 +15,7 @@ package social
 import (
 	"encoding/json"
 	"log"
+	"maps"
 	"slices"
 	"strings"
 	"sync"
@@ -598,6 +599,16 @@ func (a *Service) SetTheme(v string) {
 	a.persist()
 }
 
+// SetVolume guarda o volume (0..100%) escolhido para a tela de code, para valer também
+// na próxima vez que o app abrir.
+func (a *Service) SetVolume(code string, pct int) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.cfg.SetVolume(code, pct) {
+		a.persist()
+	}
+}
+
 // OnClose é o que o botão de fechar faz (ver SetOnClose).
 func (a *Service) OnClose() string {
 	a.mu.Lock()
@@ -1058,6 +1069,8 @@ func (a *Service) State() State {
 			s.Names[m.Code] = m.Name
 		}
 	}
+	// cópia: a página lê o State fora do lock, e SetVolume pode mudar o mapa ao mesmo tempo
+	s.Config.Volumes = maps.Clone(a.cfg.Volumes)
 	return s
 }
 
