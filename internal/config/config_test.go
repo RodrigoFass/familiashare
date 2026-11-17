@@ -108,3 +108,31 @@ func TestThemeDefaultsAndKeepsKnown(t *testing.T) {
 		t.Errorf("tema desconhecido virou %q, quero escuro", c.Theme)
 	}
 }
+
+func TestKeyIsGeneratedAndKept(t *testing.T) {
+	dir := t.TempDir()
+	c := Load(dir)
+	if c.PrivateKey() == nil {
+		t.Fatal("a primeira execução deveria gerar a chave")
+	}
+	Save(dir, c)
+	if Load(dir).Key != c.Key {
+		t.Error("a chave não pode mudar entre execuções (os amigos guardam a pública)")
+	}
+	// config de versão antiga, sem chave: ganha uma e mantém o código
+	os.WriteFile(filepath.Join(dir, "config.json"), []byte(`{"v":2,"myCode":"abcdefgh"}`), 0o644)
+	if old := Load(dir); old.PrivateKey() == nil || old.MyCode != "abcdefgh" {
+		t.Errorf("config antiga deveria ganhar chave e manter o código: %+v", old)
+	}
+}
+
+func TestInvalidFriendKeyIsDropped(t *testing.T) {
+	c := Config{Friends: []Friend{{Code: "abcdefgh", Key: "lixo"}, {Code: "hjkmnpqr", Key: NewKey()}}}
+	c.Normalize()
+	if c.Friends[0].Key != "" {
+		t.Error("chave inválida deveria ser apagada (o amigo volta a ser aceito até assinar)")
+	}
+	if c.Friends[1].Key == "" {
+		t.Error("chave válida deveria ser mantida")
+	}
+}
