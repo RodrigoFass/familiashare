@@ -579,8 +579,9 @@ func TestPrivateKeyNeverReachesThePage(t *testing.T) {
 	}
 	if k := ana.State().Config.Key; k != "" {
 		t.Errorf("State (vai para a página) não pode levar a chave privada: %q", k)
-  }
+	}
 }
+
 func TestVolumeIsSavedAndSafeToReadConcurrently(t *testing.T) {
 	var mu sync.Mutex
 	var saved config.Config

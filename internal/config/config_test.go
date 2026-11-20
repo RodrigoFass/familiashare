@@ -135,8 +135,9 @@ func TestInvalidFriendKeyIsDropped(t *testing.T) {
 	}
 	if c.Friends[1].Key == "" {
 		t.Error("chave válida deveria ser mantida")
-  }
+	}
 }
+
 func TestVolumesSurviveSaveLoad(t *testing.T) {
 	dir := t.TempDir()
 	c := Load(dir)

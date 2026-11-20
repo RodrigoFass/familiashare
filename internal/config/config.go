@@ -84,8 +84,8 @@ func (c *Config) Normalize() {
 	for i, f := range c.Friends {
 		if _, ok := ParsePublicKey(f.Key); !ok {
 			c.Friends[i].Key = ""
-    }
-  }
+		}
+	}
 	for code, v := range c.Volumes { // 100% é o padrão: não precisa ocupar espaço no arquivo
 		if code != NormCode(code) || code == "" || v < 0 || v >= 100 {
 			delete(c.Volumes, code)
