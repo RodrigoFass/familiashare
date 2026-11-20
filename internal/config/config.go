@@ -36,6 +36,9 @@ type Config struct {
 	ShareHintSeen bool   `json:"shareHintSeen"` // já deu a dica de silenciar apps (eco) ao transmitir
 	Theme         string `json:"theme"`         // cores do app (ver Themes)
 
+	// volume escolhido para a tela de cada pessoa, em % (código → 0..99; 100 não é guardado)
+	Volumes map[string]int `json:"volumes,omitempty"`
+
 	// transmissão
 	Monitor int      `json:"monitor"` // índice em capture.ListMonitors()
 	Height  int      `json:"height"`  // 0 = nativa
@@ -81,6 +84,11 @@ func (c *Config) Normalize() {
 	for i, f := range c.Friends {
 		if _, ok := ParsePublicKey(f.Key); !ok {
 			c.Friends[i].Key = ""
+    }
+  }
+	for code, v := range c.Volumes { // 100% é o padrão: não precisa ocupar espaço no arquivo
+		if code != NormCode(code) || code == "" || v < 0 || v >= 100 {
+			delete(c.Volumes, code)
 		}
 	}
 	if c.Name == "" {
@@ -136,6 +144,38 @@ func ParsePublicKey(s string) (ed25519.PublicKey, bool) {
 		return nil, false
 	}
 	return ed25519.PublicKey(b), true
+}
+
+// MaxVolumes limita quantas pessoas têm volume guardado (o arquivo não cresce sem fim
+// com gente que entrou numa sala uma vez só).
+const MaxVolumes = 200
+
+// SetVolume guarda o volume (0..100%) escolhido para a tela de code. Devolve se mudou.
+func (c *Config) SetVolume(code string, pct int) bool {
+	code = NormCode(code)
+	if code == "" {
+		return false
+	}
+	pct = max(0, min(100, pct))
+	old, had := c.Volumes[code]
+	if pct == 100 {
+		if !had {
+			return false
+		}
+		delete(c.Volumes, code)
+		return true
+	}
+	if had && old == pct {
+		return false
+	}
+	if !had && len(c.Volumes) >= MaxVolumes {
+		return false
+	}
+	if c.Volumes == nil {
+		c.Volumes = map[string]int{}
+	}
+	c.Volumes[code] = pct
+	return true
 }
 
 const codeAlphabet = "abcdefghjkmnpqrstuvwxyz23456789" // sem 0/o, 1/l/i: fáceis de confundir

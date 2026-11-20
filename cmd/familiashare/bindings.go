@@ -39,6 +39,7 @@ func bind(w webview2.WebView, svc *social.Service, upd *update.Updater, frame *w
 			frame.SetTheme(dark, b<<16|g<<8|r)
 		}
 	})
+	w.Bind("goSetVolume", func(code string, pct int) { svc.SetVolume(code, pct) })
 	w.Bind("goFirstShareHint", func() bool { return svc.FirstShareHint() })
 	w.Bind("goQuit", func() { w.Dispatch(w.Terminate) })
 	w.Bind("goOpenLogs", func() { winapi.OpenURL(dataDir) }) // para mandar o familiashare.log a quem ajuda

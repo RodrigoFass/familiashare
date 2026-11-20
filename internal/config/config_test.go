@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -134,5 +135,68 @@ func TestInvalidFriendKeyIsDropped(t *testing.T) {
 	}
 	if c.Friends[1].Key == "" {
 		t.Error("chave válida deveria ser mantida")
+  }
+}
+func TestVolumesSurviveSaveLoad(t *testing.T) {
+	dir := t.TempDir()
+	c := Load(dir)
+	if !c.SetVolume("abcdefgh", 35) || !c.SetVolume("hjkmnpqr", 0) {
+		t.Fatal("SetVolume deveria guardar volumes novos")
+	}
+	if err := Save(dir, c); err != nil {
+		t.Fatal(err)
+	}
+	got := Load(dir).Volumes
+	if got["abcdefgh"] != 35 || got["hjkmnpqr"] != 0 || len(got) != 2 {
+		t.Errorf("volumes depois de salvar e abrir de novo: %v", got)
+	}
+}
+
+func TestSetVolume(t *testing.T) {
+	var c Config
+	if c.SetVolume("abcdefgh", 100) {
+		t.Error("100% é o padrão: não deveria guardar nada")
+	}
+	c.SetVolume(" ABCD-EFGH ", 150) // código digitado de qualquer jeito e volume fora da faixa
+	if len(c.Volumes) != 0 {
+		t.Errorf("150%% vira 100%% (padrão) e não é guardado: %v", c.Volumes)
+	}
+	c.SetVolume("abcdefgh", -5)
+	if v, ok := c.Volumes["abcdefgh"]; !ok || v != 0 {
+		t.Errorf("volume negativo deveria virar 0: %v", c.Volumes)
+	}
+	if c.SetVolume("abcdefgh", 0) {
+		t.Error("mesmo volume não é mudança")
+	}
+	if !c.SetVolume("abcdefgh", 100) || len(c.Volumes) != 0 {
+		t.Errorf("voltar para 100%% apaga o volume guardado: %v", c.Volumes)
+	}
+	if c.SetVolume("", 50) {
+		t.Error("código vazio não pode ser guardado")
+	}
+}
+
+func TestSetVolumeLimit(t *testing.T) {
+	var c Config
+	for i := range MaxVolumes {
+		if !c.SetVolume(fmt.Sprintf("p%07d", i), 50) {
+			t.Fatalf("volume %d deveria caber", i)
+		}
+	}
+	if c.SetVolume("novatoxx", 50) || len(c.Volumes) != MaxVolumes {
+		t.Errorf("passou do limite de %d volumes", MaxVolumes)
+	}
+	if !c.SetVolume("p0000000", 10) { // quem já está guardado ainda pode mudar
+		t.Error("deveria poder mudar o volume de quem já está guardado")
+	}
+}
+
+func TestNormalizeDropsInvalidVolumes(t *testing.T) {
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, "config.json"),
+		[]byte(`{"v":2,"myCode":"abcdefgh","volumes":{"hjkmnpqr":40,"ABC":10,"rstuvwxy":100,"stuvwxyz":-3,"":5}}`), 0o644)
+	got := Load(dir).Volumes
+	if len(got) != 1 || got["hjkmnpqr"] != 40 {
+		t.Errorf("só o volume válido deveria sobrar: %v", got)
 	}
 }

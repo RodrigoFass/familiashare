@@ -579,5 +579,39 @@ func TestPrivateKeyNeverReachesThePage(t *testing.T) {
 	}
 	if k := ana.State().Config.Key; k != "" {
 		t.Errorf("State (vai para a página) não pode levar a chave privada: %q", k)
+  }
+}
+func TestVolumeIsSavedAndSafeToReadConcurrently(t *testing.T) {
+	var mu sync.Mutex
+	var saved config.Config
+	cfg := config.Config{Name: "Ana", MyCode: "anaaaaaa"}
+	cfg.Normalize()
+	svc := New(cfg, func(c config.Config) { mu.Lock(); saved = c; mu.Unlock() }, &fakeHost{}, func(map[string]any) {})
+	svc.Run(newBus().connect(cfg.MyCode, svc))
+
+	// a página lendo o estado enquanto o volume muda (go test -race pega a corrida)
+	stop := make(chan bool)
+	done := make(chan bool)
+	go func() {
+		for i := 0; ; i++ {
+			select {
+			case <-stop:
+				done <- true
+				return
+			default:
+				svc.SetVolume("betoooo2", i%100)
+			}
+		}
+	}()
+	for range 300 {
+		json.Marshal(svc.State())
+	}
+	close(stop)
+	<-done
+	svc.SetVolume("betoooo2", 40)
+	mu.Lock()
+	defer mu.Unlock()
+	if saved.Volumes["betoooo2"] != 40 {
+		t.Errorf("volume deveria ir para o config salvo: %v", saved.Volumes)
 	}
 }
